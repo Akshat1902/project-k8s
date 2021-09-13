@@ -1,0 +1,98 @@
+---
+- name: Minikube automation play
+  hosts: azure
+  gather_facts: true
+
+  pre_tasks:
+    
+    - name: Check Minikube's status
+      command: minikube status
+      register: minikube_status
+      changed_when: false
+      ignore_errors: true
+    
+    - name: Display minikube status
+      debug:
+        msg: "{{ minikube_status.stdout.split('\n') }}"
+
+    - name: Start Minikube on necessity
+      command: minikube start
+      when: "not minikube_status.stdout or 'Running' not in minikube_status.stdout"
+
+  tasks:
+
+    - name: Deploying Redis
+      command: kubectl apply -f /home/azureuser/example-voting-app/redis.yml
+      register: depl_output1
+      changed_when: " 'unchanged' not in depl_output1.stdout"
+    
+    - name: Deployment rollout status
+      debug:
+        msg: "{{depl_output1.stdout.split('\n')}}"
+
+    - name: Deploying Postgres
+      command: kubectl apply -f /home/azureuser/example-voting-app/postgres.yml
+      register: depl_output2
+      changed_when: " 'unchanged' not in depl_output2.stdout"
+
+    - name: Deployment rollout status
+      debug:
+        msg: "{{depl_output2.stdout.split('\n')}}"
+
+    - name: Deploying Python App  
+      command: kubectl apply -f /home/azureuser/example-voting-app/vote-app.yml
+      register: depl_output3
+      changed_when: " 'unchanged' not in depl_output3.stdout"
+
+    - name: Deployment rollout status
+      debug:
+        msg: "{{depl_output3.stdout.split('\n')}}"
+      
+    - name: Deploying Node result App
+      command: kubectl apply -f /home/azureuser/example-voting-app/result-app.yml
+      register: depl_output4
+      changed_when: " 'unchanged' not in depl_output4.stdout"
+
+    - name: Deployment rollout status
+      debug:
+        msg: "{{depl_output4.stdout.split('\n')}}"
+      
+    - name: Deploying Worker App
+      command: kubectl apply -f /home/azureuser/example-voting-app/worker.yml
+      register: depl_output5
+      changed_when: " 'unchanged' not in depl_output5.stdout"
+
+    - name: Deployment rollout status
+      debug:
+        msg: "{{depl_output5.stdout.split('\n')}}"
+
+  post_tasks:
+
+    - name: Adding firewall rule 8085,8086
+      become: yes
+      ufw:
+        rule: allow
+        port: 8085:8086
+        proto: tcp
+
+    - name: Change perm
+      become: yes  
+      command: chmod a+x port.sh    
+      args: 
+        chdir: /home/azureuser/example-voting-app
+        
+    - name: Run Script
+      script:
+        cmd: /home/azureuser/example-voting-app/port.sh
+      register: output6
+        
+    - name: Logging data
+      copy:
+        content: "{{minikube_status.stdout}}\n\n~Deployment Rollouts:\n\n{{depl_output1.stdout}}
+        \n\n{{depl_output2.stdout}}\n\n{{depl_output3.stdout}}\n\n{{depl_output4.stdout}}
+        \n\n{{depl_output5.stdout}}\n\n{{output6}}"
+        dest: /home/azureuser/minikube.log
+
+    - name: Run Script to expose deployments
+      script:
+        cmd: /home/azureuser/example-voting-app/portForward.sh    

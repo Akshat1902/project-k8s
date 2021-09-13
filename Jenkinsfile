@@ -3,42 +3,48 @@ pipeline{
     stages{
         stage('Checkout SCM'){
             steps{
-                git url: 'https://github.com/Akshat1902/example-voting-app.git'
+                git url: 'https://github.com/Akshat1902/project-k8s.git'
             }
         }
 
-        stage('SonarQube analysis') {
-         steps {
+        stage('SonarQube analysis'){
+            steps{
             script {
-              // requires SonarQube Scanner 2.8+
-              scannerHome = tool 'sonarqube'
+              scannerHome = tool 'Example-voting-app'
             }
-            withSonarQubeEnv('sonarqube') {
+            withSonarQubeEnv('Example-voting-app') {
              sh "${scannerHome}/bin/sonar-scanner \
              -D sonar.login=admin \
              -D sonar.password=password123 \
-             -D sonar.projectKey=sonarqube"
+             -D sonar.projectKey=Example-voting-app"
             }
           }
         }
-
-        stage('Install Docker and Docker-compose'){
+         stage('Docker'){
             steps{
-                sh 'ansible-playbook -i hosts azure-docker.yml'
-                sh 'sleep 45'
+                sh "ansible-playbook azure-docker.yml"
+                sh "sleep 60"
             }
         }
-        
-        stage('Build images by dockerfiles'){
+        stage('Docker Images'){
             steps{
-                sh 'ansible-playbook -i hosts buildImages.yml'
+                sh "ansible-playbook -i hosts buildImages.yml"
+            }
+        } 
+        stage('Kubernetes and minikube'){
+            steps{
+                sh "ansible-playbook -i hosts install-minikube.yml"
             }
         }
-        
-        stage('Run Docker Compose'){
+        stage('Deploy'){
             steps{
-                sh 'ansible-playbook -i hosts runContainers.yml'
+                sh "ansible-playbook -i hosts ansible-minikube.yml"
+            }
+        }  
+        stage('PF'){
+            steps{
+                sh "ansible-playbook -i hosts DeployForward.yml"
             }
         }
-    }
+        }
 }

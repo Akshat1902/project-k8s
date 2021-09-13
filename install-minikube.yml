@@ -1,0 +1,22 @@
+---
+- name: Install minikube
+  hosts: azure
+  gather_facts: no
+  become: yes
+  tasks:
+    - name: Download minikube
+      get_url:
+        url: "https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64"
+        dest: "."
+ 
+
+    - name: Install minikube
+      command: sudo install minikube-linux-amd64 /usr/local/bin/minikube
+
+    - name: Download kubectl
+      get_url:
+        url: "https://dl.k8s.io/release/v1.22.0/bin/linux/amd64/kubectl"
+        dest: "."
+
+    - name: Install kubectl
+      command: sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
